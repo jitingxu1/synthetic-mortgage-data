@@ -12,6 +12,8 @@ from dateutil.relativedelta import relativedelta
 from collections import defaultdict
 from uuid import uuid4
 
+from multiprocessing import Pool
+import os
 
 data_types = {
  'original_upb': 'int',
@@ -188,13 +190,13 @@ acq_schema = pa.schema([
 
 
 
-def column_is_null(orig_date, seller_name, col):
+def column_is_null(orig_date, seller_name, col, acq_config):
     if col in acq_config['missing_rate'][seller_name]:
         return acq_config['missing_rate'][seller_name][col] > random.random()
     return False
 
-def generate_col_from_distribution(name, orig_date, seller_name):
-    if column_is_null(orig_date, seller_name, name):
+def generate_col_from_distribution(name, orig_date, seller_name, acq_config):
+    if column_is_null(orig_date, seller_name, name, acq_config):
         return None
     else:
         keys_and_weights = acq_config['distribution'][seller_name][f"{name}_weight"]
@@ -207,8 +209,8 @@ def generate_col_from_distribution(name, orig_date, seller_name):
             return int(float(val))
         return val
 
-def generate_col_from_normal_distribution(name, orig_date, seller_name):
-    if column_is_null(orig_date, seller_name, name):
+def generate_col_from_normal_distribution(name, orig_date, seller_name,acq_config):
+    if column_is_null(orig_date, seller_name, name, acq_config):
         return None
     else:
         stats = acq_config['col_norm_distribution'][orig_date][seller_name]
@@ -247,7 +249,7 @@ def get_random(candidates_weights):
 
     return random.choices(list(candidates_weights.keys()), list(candidates_weights.values()))[0]
 
-def generate_loan(orig_month, orig_year, loan_id):
+def generate_loan(orig_month, orig_year, loan_id, acq_config):
 
     orig_date = f"{orig_year}-{orig_month:02d}-01"
 
@@ -263,17 +265,17 @@ def generate_loan(orig_month, orig_year, loan_id):
     cols_dict['first_payment_date'] = datetime.strptime(f"{first_pay_year}-{first_pay_month}-01", "%Y-%m-%d").date()
 
     for col in discrete_cols:
-        cols_dict[col] = generate_col_from_distribution(col, orig_date, seller_name)
+        cols_dict[col] = generate_col_from_distribution(col, orig_date, seller_name, acq_config)
 
     for col in norm_cols:
-        cols_dict[col] = generate_col_from_normal_distribution(col, orig_date, seller_name)
+        cols_dict[col] = generate_col_from_normal_distribution(col, orig_date, seller_name, acq_config)
 
     return cols_dict
 
 
 
 
-def generate_col_from_normal_distribution_perf(name):
+def generate_col_from_normal_distribution_perf(name, perf_conf):
 
     stats = perf_conf['col_norm_distribution']
     # print(f"stats ={stats}")
@@ -295,7 +297,7 @@ def generate_col_from_normal_distribution_perf(name):
 
 
 
-def generate_perf(loan):
+def generate_perf(loan, perf_conf):
 
         trans = []
         loan_id = loan['loan_id']
@@ -362,16 +364,16 @@ def generate_perf(loan):
                     reporting_month if delingquent_num >= 1 and i == age else None, #'last_paid_installment_date',
                     reporting_month if delingquent_num >= 1 and i == age else None, #'foreclosure_date',
                     reporting_month if delingquent_num >= 1 and i == age else None, # 'disposition_date',
-                    generate_col_from_normal_distribution_perf('foreclosure_costs') if delingquent_num > 0 and i == age else None, # 'foreclosure_costs',
-                    generate_col_from_normal_distribution_perf('credit_enhancement_proceeds') if delingquent_num > 0 and i == age else None, #'credit_enhancement_proceeds',
-                    generate_col_from_normal_distribution_perf('repurchase_make_whole_proceeds') if delingquent_num > 0 and i == age else None, #'repurchase_make_whole_proceeds',
-                    generate_col_from_normal_distribution_perf('other_foreclosure_proceeds') if delingquent_num > 0 and i == age else None, # 'other_foreclosure_proceeds',
-                    generate_col_from_normal_distribution_perf('modification_noninterest_bearing_upb') if delingquent_num > 0 and i == age else None, # modification_noninterest_bearing_upb',
-                    generate_col_from_normal_distribution_perf('principal_foregiveness_amount') if delingquent_num > 0 and i == age else None, #'principal_foregiveness_amount',
+                    generate_col_from_normal_distribution_perf('foreclosure_costs', perf_conf) if delingquent_num > 0 and i == age else None, # 'foreclosure_costs',
+                    generate_col_from_normal_distribution_perf('credit_enhancement_proceeds', perf_conf) if delingquent_num > 0 and i == age else None, #'credit_enhancement_proceeds',
+                    generate_col_from_normal_distribution_perf('repurchase_make_whole_proceeds', perf_conf) if delingquent_num > 0 and i == age else None, #'repurchase_make_whole_proceeds',
+                    generate_col_from_normal_distribution_perf('other_foreclosure_proceeds', perf_conf) if delingquent_num > 0 and i == age else None, # 'other_foreclosure_proceeds',
+                    generate_col_from_normal_distribution_perf('modification_noninterest_bearing_upb', perf_conf) if delingquent_num > 0 and i == age else None, # modification_noninterest_bearing_upb',
+                    generate_col_from_normal_distribution_perf('principal_foregiveness_amount', perf_conf) if delingquent_num > 0 and i == age else None, #'principal_foregiveness_amount',
                     None, #'repurchase_make_whole_proceeds_flag',
                     None, #'borrower_credit_score_current',
                     None, #'coborrower_credit_score_current',
-                    generate_col_from_normal_distribution_perf('credit_enhancement_proceeds') if delingquent_num > 0 and i == age else None, #'foreclosure_principal_writeoff_amount',
+                    generate_col_from_normal_distribution_perf('credit_enhancement_proceeds', perf_conf) if delingquent_num > 0 and i == age else None, #'foreclosure_principal_writeoff_amount',
                     None, #'next_interest_rate_adjustment_date',
                     None, #'next_payment_change_date'
                 ]
@@ -395,10 +397,14 @@ def load_json(file_path):
     return data_dict
 
 def generate_data(partition, output_path, scale=1):
+    print(partition, output_path)
+
+    perf_conf = load_json(f"./config/perf/{partition}/perf.json")
+    acq_config = load_json(f"./config/acq/{partition}/acq.json")
     loans = []
     perfs = []
 
-    for year in range(1999, 2024):
+    for year in range(1999, 2007):
         for month in range(1, 13):
             orig_date = f"{year}-{month:02d}-01"
             # print(f"working on {orig_date}")
@@ -409,16 +415,19 @@ def generate_data(partition, output_path, scale=1):
             scaled_loan_cnt = int(acq_config['loan_cnt_by_date'][orig_date] * scale)
             for i in range(scaled_loan_cnt):
                 loan_id = str(uuid4())
-                acq_dict = generate_loan(month, year, loan_id)
+                acq_dict = generate_loan(month, year, loan_id, acq_config)
                 loans.append([acq_dict[key] if key in acq_dict else None for key in acq_headers])
-                trans = generate_perf(acq_dict)
+                trans = generate_perf(acq_dict, perf_conf)
                 perfs.extend(trans)
+
     print("saving tables")
+    print(f"perf to {output_path}/perf/perf_{partition}.parquet")
     perf_table = pa.Table.from_arrays([pa.array(col) for col in zip(*perfs)], schema=perf_schema)
     pq.write_table(perf_table, f'{output_path}/perf/perf_{partition}.parquet', compression='ZSTD')
     del perf_table
     del perfs
 
+    print(f"acq to {output_path}/acq/acq_{partition}.parquet")
     loan_table = pa.Table.from_arrays([pa.array(col) for col in zip(*loans)], schema=acq_schema)
     pq.write_table(loan_table, f'{output_path}/acq/acq_{partition}.parquet', compression='ZSTD')
     del loan_table
@@ -426,31 +435,36 @@ def generate_data(partition, output_path, scale=1):
 
 
 
-def main(start_year, end_year, scale = 0.1):
-    global perf_conf 
-    global acq_config
+def main(start_year, end_year, output_path, scale = 0.1):
+    mapped_args = [
+        (f"{y}Q{q}", output_path, scale) 
+        for y in range(start_year, end_year + 1)
+        for q in range(1,5)
+    ]
 
-    start_time = time.time()
-    for y in range(start_year, end_year + 1):
-        for q in range(1, 5):
-            dataset = f"{y}Q{q}"
-            print(f"work on {dataset}")
-            # Looks like we are missing 2003Q2 and Q3 data
-            if y == 2003 and q in [2, 3]: continue
-            # Need to reload the precomputed distribution for each quarter
-            
-            perf_conf = load_json(f"./config/perf/{dataset}/perf.json")
-            acq_config = load_json(f"./config/acq/{dataset}/acq.json")
-            generate_data(dataset, './data', scale=scale)
-
+    with Pool(12) as p:
+        p.starmap(generate_data, mapped_args)
 
 
 if __name__ == '__main__':
-    start_year = 2000
-    end_year = 2000
-    scale = 0.1
+    start_year = 2004
+    end_year = 2007
+    scale = 1
     acq_config = {}
     perf_config = {}
-    main(start_year, end_year, scale)
+    output_path = f'/home/tom/data/mortgage_synthetic/sf={scale}'
+
+    # TODO: check if the folders exist and create if they don't
+    if not os.path.isdir(output_path):
+        try:
+            os.mkdir(output_path)
+            os.mkdir(f'{output_path}/acq')
+            os.mkdir(f'{output_path}/perf')
+        except:
+            pass
+
+
+
+    main(start_year, end_year, output_path, scale)
 
 
