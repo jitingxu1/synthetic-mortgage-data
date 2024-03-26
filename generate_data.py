@@ -76,13 +76,13 @@ def generate_loan_and_perf(partition, output_path, sf_name, config_path, max_mem
                 loan_cnt += 1
                 perf_cnt += len(trans)
 
-                if loan_cnt % 5000 == 0:
+                if loan_cnt % 1000 == 0:
                     memory_size = sys.getsizeof(perfs)
                     memory_size += sys.getsizeof(loans)
-                    print(f"mem = {memory_size / (1024*1024)}mb")
+                    # print(f"mem = {memory_size / (1024*1024)}mb")
 
                 if memory_size > 1024*1024*max_mem_mb:
-                    print(f"saving tables - chunks {memory_size / (1024*1024)}mb")
+                    # print(f"saving tables - chunks {memory_size / (1024*1024)}mb")
                     save_data(loans, acq_schema, output_path, partition, "acq", loan_cnt)
                     loans = []
                     save_data(perfs, perf_schema, output_path, partition, "perf", perf_cnt)                   

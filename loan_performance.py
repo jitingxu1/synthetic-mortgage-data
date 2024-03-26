@@ -84,7 +84,7 @@ def generate_perf_data_for_current_loan(loan, perf_conf, zero_balance_code=""):
                 servicer, # servicer
                 "", #master_servicer
                 float(interest_rate) if interest_rate else None, # current_interest_rate
-                None if upb_skip > 0 else round(current_actual_upb, 1) , # current_upb
+                None if upb_skip > 0 else max(0, round(current_actual_upb, 1)) , # current_upb
                 i, # loan_age
                 loan_term, # remaining_months_to_legal_maturity
                 loan_term - 1, # remaining_months_to_maturity
@@ -125,6 +125,9 @@ def generate_perf_data_for_current_loan(loan, perf_conf, zero_balance_code=""):
                 current_loan_delinquency_status = min(current_loan_delinquency_status, 99)
 
         loan_payment_history = loan_payment_history[1: ] +  [current_loan_delinquency_status]
+
+        if i > loan_term or current_actual_upb <=0:
+            break
         
     return trans
 
@@ -176,7 +179,7 @@ def generate_perf_data_for_prepaid_loan(loan, perf_conf, zero_balance_code="01")
                 servicer, # servicer
                 "", #master_servicer
                 float(interest_rate) if interest_rate else None, # current_interest_rate
-                None if upb_skip > 0 else round(current_actual_upb, 1) , # current_upb
+                None if upb_skip > 0 else max(0, round(current_actual_upb, 1)) , # current_upb
                 i, # loan_age
                 loan_term, # remaining_months_to_legal_maturity
                 loan_term - 1, # remaining_months_to_maturity
@@ -210,6 +213,9 @@ def generate_perf_data_for_prepaid_loan(loan, perf_conf, zero_balance_code="01")
         upb_skip -= 1
         if upb_skip <= 0:
             current_actual_upb -= monthly_upb
+        
+        if i > loan_term or current_actual_upb <=0:
+            break
 
     if random.random() < 0.05: # TODO: Should have a ratio
         last_delingquent = "00"
@@ -310,7 +316,7 @@ def generate_perf_data_for_3rd_party_sale_loan(loan, perf_conf, zero_balance_cod
                 servicer, # servicer
                 "", #master_servicer
                 float(interest_rate) if interest_rate else None, # current_interest_rate
-                None if upb_skip > 0 else round(current_actual_upb, 1) , # current_upb
+                None if upb_skip > 0 else max(0, round(current_actual_upb, 1)) , # current_upb
                 i, # loan_age
                 loan_term, # remaining_months_to_legal_maturity
                 loan_term - 1, # remaining_months_to_maturity
@@ -352,6 +358,9 @@ def generate_perf_data_for_3rd_party_sale_loan(loan, perf_conf, zero_balance_cod
                 current_loan_delinquency_status = min(current_loan_delinquency_status, 99)
 
         loan_payment_history = loan_payment_history[1:] + [current_loan_delinquency_status]
+
+        if i > loan_term or current_actual_upb <=0:
+            break
 
     if zero_balance_code in ["02", "09", "15"] and random.random() < 0.05:
         last_delingquent = f"{delingquent_num:02d}"
@@ -442,7 +451,7 @@ def generate_perf_data_for_repurchased_loan(loan, perf_conf, zero_balance_code="
                 servicer, # servicer
                 "", #master_servicer
                 float(interest_rate) if interest_rate else None, # current_interest_rate
-                None if upb_skip > 0 or  i == max_loan_age -1 else round(current_actual_upb, 1) , # current_upb
+                None if upb_skip > 0 or  i == max_loan_age -1 else max(0, round(current_actual_upb, 1)) , # current_upb
                 i if i < max_loan_age -1 else None, # loan_age
                 loan_term if i < max_loan_age -1 else None, # remaining_months_to_legal_maturity
                 loan_term - 1 if i < max_loan_age -1 else None, # remaining_months_to_maturity
@@ -476,6 +485,9 @@ def generate_perf_data_for_repurchased_loan(loan, perf_conf, zero_balance_code="
         upb_skip -= 1
         if upb_skip <= 0:
             current_actual_upb -= monthly_upb
+
+        if i > loan_term or current_actual_upb <=0:
+            break
 
 
         
@@ -527,7 +539,7 @@ def generate_perf_data_for_non_performing_not_sale_loan(loan, perf_conf, zero_ba
                 servicer, # servicer
                 "", #master_servicer
                 float(interest_rate) if interest_rate else None, # current_interest_rate
-                None if upb_skip > 0 or  i == max_loan_age -1 else round(current_actual_upb, 1) , # current_upb
+                None if upb_skip > 0 or  i == max_loan_age -1 else max(0, round(current_actual_upb, 1)) , # current_upb
                 i if i < max_loan_age -1 else None, # loan_age
                 loan_term if i < max_loan_age -1 else None, # remaining_months_to_legal_maturity
                 loan_term - 1 if i < max_loan_age -1 else None, # remaining_months_to_maturity
@@ -561,6 +573,9 @@ def generate_perf_data_for_non_performing_not_sale_loan(loan, perf_conf, zero_ba
         upb_skip -= 1
         if upb_skip <= 0:
             current_actual_upb -= monthly_upb
+        
+        if i > loan_term or current_actual_upb <=0:
+            break
    
     return trans
 
