@@ -20,6 +20,7 @@ if __name__ == '__main__':
     parser.add_argument('-max_mem_mb', type=int, help='max loans', default=10)
     parser.add_argument('-o', '--output_path', type=pathlib.Path, help='Output Folder path', default='data')
     parser.add_argument('-c', '--config_path', type=pathlib.Path, help='config file', default='./config')
+    parser.add_argument('-pools', type=int, help='number pool', default=1)
 
     args = parser.parse_args()
 
@@ -30,6 +31,7 @@ if __name__ == '__main__':
     output_path = args.output_path
     config_path = args.config_path
     max_mem_mb = args.max_mem_mb
+    pools = args.pools
 
     mapped_args = [
         (f"{y}Q{q}", output_path, sf_name, config_path, max_mem_mb, scale) 
@@ -37,6 +39,6 @@ if __name__ == '__main__':
         for q in range(1,5)
     ]
 
-    with Pool(2) as p:
+    with Pool(pools) as p:
         p.starmap(generate_loan_and_perf, mapped_args)
 
