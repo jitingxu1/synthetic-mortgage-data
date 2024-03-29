@@ -175,7 +175,11 @@ acq_schema = pa.schema([
 
 def get_random_choice(candidates_weights):
 
-    return  random.choices(list(candidates_weights.keys()), list(candidates_weights.values()))[0]
+    val =  random.choices(list(candidates_weights.keys()), list(candidates_weights.values()))[0]
+    if val == "NaN":
+        return "0"
+    else:
+        return val
 
 def get_random_choices_with_range(candidates_weights, min_val = float('-inf'), max_val = float('inf')):
 

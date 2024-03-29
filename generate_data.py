@@ -33,7 +33,7 @@ def save_data(data, schema, output_path, partition, name, num):
     
 
 def generate_loan_and_perf(partition, output_path, sf_name, config_path, max_mem_mb, scale=1):
-    print(f"partition = {partition}")
+    print(f"Starting partition = {partition}")
 
     output_path = f'{output_path}/sf={scale}_{sf_name}/{partition}'
 
@@ -82,12 +82,13 @@ def generate_loan_and_perf(partition, output_path, sf_name, config_path, max_mem
                     # print(f"mem = {memory_size / (1024*1024)}mb")
 
                 if memory_size > 1024*1024*max_mem_mb:
-                    # print(f"saving tables - chunks {memory_size / (1024*1024)}mb")
+                    print(f"saving tables for {partition} - chunks {memory_size / (1024*1024)}mb")
                     save_data(loans, acq_schema, output_path, partition, "acq", loan_cnt)
                     loans = []
                     save_data(perfs, perf_schema, output_path, partition, "perf", perf_cnt)                   
                     perfs = []
                     memory_size = 0
+                    print(f"saved tables for {partition} - chunks {memory_size / (1024*1024)}mb")
                     
 
     if len(loans) > 0 and len(perfs) > 0:
@@ -99,3 +100,7 @@ def generate_loan_and_perf(partition, output_path, sf_name, config_path, max_mem
         # print(f"acq to {output_path}/acq/acq_{partition}.parquet")
         save_data(loans, acq_schema, output_path, partition, "acq", loan_cnt)
         del loans
+        print(f"finised {partition}")
+        # Append partition to a local file
+    with open(f"sf={scale}_{sf_name}finished_file.txt", "a") as file:
+        file.write(f"'{partition}',\n")

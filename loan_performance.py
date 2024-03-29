@@ -57,7 +57,7 @@ def generate_perf_data_for_current_loan(loan, perf_conf, zero_balance_code=""):
     maturity_date = orig_date + relativedelta(months=loan_term)
 
     # The loan payment will go to the LAST_LOAN_REPORTING_DATE
-    max_loan_age = (LAST_LOAN_REPORTING_DATE - orig_date).days // 30
+    max_loan_age = max((LAST_LOAN_REPORTING_DATE - orig_date).days // 30, 1)
     delingquent_num_weights = perf_conf["delinquency_distribution"][zero_balance_code]
     last_loan_status = int(float(get_random_choice(delingquent_num_weights)))
     current_loan_delinquency_status = 0
@@ -155,7 +155,7 @@ def generate_perf_data_for_prepaid_loan(loan, perf_conf, zero_balance_code="01")
     maturity_date = orig_date + relativedelta(months=loan_term)
 
     weights = perf_conf["loan_age_distribution"][zero_balance_code]
-    max_loan_age = int(float(get_random_choice(weights)))
+    max_loan_age = max(int(float(get_random_choice(weights))), 1)
 
     msa_weight = perf_conf['msa'][loan['property_state']].get(str(loan['zip']), {'00000': 1})
     servicer_weight = perf_conf['servicer'][seller_name]
@@ -288,7 +288,7 @@ def generate_perf_data_for_3rd_party_sale_loan(loan, perf_conf, zero_balance_cod
     maturity_date = orig_date + relativedelta(months=loan_term)
 
     weights = perf_conf["loan_age_distribution"][zero_balance_code]
-    max_loan_age = int(float(get_random_choice(weights)))
+    max_loan_age = max(int(float(get_random_choice(weights))), 1)
     delingquent_num_weights = perf_conf["delinquency_distribution"][zero_balance_code]
     delingquent_num = int(float(get_random_choice(delingquent_num_weights)))
     current_loan_delinquency_status = 0
@@ -429,7 +429,7 @@ def generate_perf_data_for_repurchased_loan(loan, perf_conf, zero_balance_code="
     maturity_date = orig_date + relativedelta(months=loan_term)
 
     weights = perf_conf["loan_age_distribution"][zero_balance_code]
-    max_loan_age = int(float(get_random_choice(weights)))
+    max_loan_age = max(int(float(get_random_choice(weights))), 1)
 
     msa_weight = perf_conf['msa'][loan['property_state']].get(str(loan['zip']), {'00000': 1})
     servicer_weight = perf_conf['servicer'][seller_name]
@@ -517,7 +517,7 @@ def generate_perf_data_for_non_performing_not_sale_loan(loan, perf_conf, zero_ba
 
 
     weights = perf_conf["loan_age_distribution"][zero_balance_code]
-    max_loan_age = int(float(get_random_choice(weights)))
+    max_loan_age = max(int(float(get_random_choice(weights))), 1)
 
     msa_weight = perf_conf['msa'][loan['property_state']].get(str(loan['zip']), {'00000': 1})
     servicer_weight = perf_conf['servicer'][seller_name]
@@ -618,7 +618,7 @@ def generate_perf(loan, perf_conf):
                 credit_score_bin = 0
             else:
                 credit_score_bin = (credit_score - 500) // 20 + 1
-        zero_balance_code_weight = perf_conf['zero_balance_code_distribution'][str(int(float(credit_score_bin)))]
+        zero_balance_code_weight = perf_conf['zero_balance_code_distribution'].get(str(int(float(credit_score_bin))), {"01": 1})
         zero_balance_code = get_random_choice(zero_balance_code_weight)
 
         if zero_balance_code == "":

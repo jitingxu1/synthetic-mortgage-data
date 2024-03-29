@@ -33,10 +33,13 @@ if __name__ == '__main__':
     max_mem_mb = args.max_mem_mb
     pools = args.pools
 
+    finished_list = ['1999Q4']
+
     mapped_args = [
         (f"{y}Q{q}", output_path, sf_name, config_path, max_mem_mb, scale) 
         for y in range(start_year, end_year + 1)
         for q in range(1,5)
+        if f"{y}Q{q}" not in finished_list
     ]
 
     with Pool(pools) as p:
